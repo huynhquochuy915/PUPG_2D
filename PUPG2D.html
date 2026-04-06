@@ -1,0 +1,1885 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PUBG 2D - Smart AI + Auto Loot</title>
+    <!--<link rel="stylesheet" href="PUPG2Dcss.css">-->
+<style>
+
+    body {
+        margin: 0;
+        padding: 0;
+        background-color: #1a1a1a;
+        color: white;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        overflow: hidden;
+        display: flex;
+        height: 100vh;
+    }
+
+    #game-container {
+        position: relative;
+        flex-grow: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #2b2b2b;
+    }
+
+    canvas {
+        background-color: #384f32; /* Màu cỏ */
+        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        cursor: crosshair;
+    }
+
+    /* UI Overlay */
+    #ui-layer {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        pointer-events: none;
+    }
+
+    .stat-box {
+        background: rgba(0, 0, 0, 0.6);
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        border-left: 4px solid #f39c12;
+    }
+
+    /* Analyst Panel */
+    #analyst-panel {
+        width: 550px;
+        background-color: #121212;
+        border-left: 2px solid #333;
+        padding: 20px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        font-family: 'Consolas', 'Courier New', monospace;
+        font-size: 15px;
+        overflow-y: auto;
+    }
+
+    h2 {
+        margin-top: 0;
+        color: #e74c3c;
+        border-bottom: 1px solid #333;
+        padding-bottom: 10px;
+        font-size: 24px;
+    }
+
+    .log-item {
+        margin-bottom: 15px;
+        padding: 10px;
+        background: #1e1e1e;
+        border-radius: 4px;
+        border: 1px solid #333;
+    }
+
+    .log-label {
+        color: #888;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .log-value {
+        color: #2ecc71;
+        font-weight: bold;
+    }
+
+    .log-action {
+        color: #f1c40f;
+        font-weight: bold;
+    }
+
+    /* UTILITY TABLE STYLES */
+    .utility-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+
+        .utility-table th {
+            text-align: left;
+            color: #666;
+            padding-bottom: 5px;
+            font-weight: normal;
+        }
+
+        .utility-table td {
+            padding: 4px 0;
+            border-top: 1px solid #2a2a2a;
+        }
+
+    .state-name {
+        font-weight: bold;
+        color: #aaa;
+        width: 70px;
+    }
+
+    .state-score {
+        text-align: right;
+        color: #fff;
+        font-family: monospace;
+        width: 40px;
+    }
+
+    .state-prob {
+        width: 60px;
+        padding-left: 10px;
+    }
+
+    .prob-bar-bg {
+        width: 100%;
+        height: 4px;
+        background: #333;
+        border-radius: 2px;
+        overflow: hidden;
+    }
+
+    .prob-bar-fill {
+        height: 100%;
+        background: #3498db;
+        width: 0%;
+        transition: width 0.2s;
+    }
+
+    #bar-retreat {
+        background: #e74c3c;
+    }
+
+    #bar-attack {
+        background: #e67e22;
+    }
+
+    #bar-chase {
+        background: #3498db;
+    }
+
+    #bar-loot {
+        background: #9b59b6;
+    }
+    /* Màu tím cho Loot */
+
+    /* TRANSITION MATRIX STYLES */
+    .matrix-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: center;
+        font-size: 12px;
+    }
+
+        .matrix-table th {
+            color: #888;
+            padding: 4px;
+            border-bottom: 1px solid #444;
+        }
+
+        .matrix-table td {
+            padding: 4px;
+            border: 1px solid #333;
+            color: #555;
+        }
+
+    .matrix-header-col {
+        width: 20%;
+    }
+
+    .matrix-header-row {
+        text-align: left;
+        font-weight: bold;
+        color: #aaa;
+        background: #222;
+    }
+
+    /* Highlight Active Transition Row */
+    tr.transition-row.active td {
+        color: #fff;
+        background: #2c3e50;
+        font-weight: bold;
+    }
+
+        tr.transition-row.active td.matrix-header-row {
+            color: #3498db;
+            border-left: 3px solid #3498db;
+        }
+
+        tr.transition-row.active td.high-prob {
+            color: #2ecc71;
+            text-shadow: 0 0 5px rgba(46, 204, 113, 0.5);
+        }
+
+    /* Game Over Screen & Start Menu */
+    .overlay-screen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.9);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 10;
+    }
+
+    #game-over {
+        display: none;
+    }
+
+    #start-menu {
+        display: flex;
+    }
+
+    .overlay-screen h1 {
+        font-size: 48px;
+        color: #e74c3c;
+        margin-bottom: 30px;
+    }
+
+    .menu-group {
+        margin-bottom: 20px;
+        text-align: center;
+    }
+
+        .menu-group label {
+            display: block;
+            color: #aaa;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+    select {
+        padding: 10px 20px;
+        font-size: 16px;
+        background: #333;
+        color: white;
+        border: 1px solid #555;
+        border-radius: 4px;
+        width: 200px;
+    }
+
+    button {
+        padding: 15px 40px;
+        font-size: 20px;
+        background: #e67e22;
+        border: none;
+        color: white;
+        cursor: pointer;
+        border-radius: 5px;
+        margin-top: 20px;
+        font-weight: bold;
+        transition: background 0.2s;
+    }
+
+        button:hover {
+            background: #d35400;
+        }
+
+    /* Chart Canvas */
+    #statChart {
+        width: 100%;
+        height: 120px;
+        background: #222;
+        margin-top: 5px;
+        border-radius: 4px;
+        border: 1px solid #333;
+    }
+
+    /* Loot Notif */
+    #loot-msg {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 12px;
+        color: #fff;
+        opacity: 0;
+        transition: opacity 0.5s;
+        pointer-events: none;
+        background: rgba(0,0,0,0.5);
+        padding: 4px 8px;
+        border-radius: 4px;
+    }
+
+
+
+</style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="loot-msg">Vật phẩm mới xuất hiện!</div>
+
+        <div id="ui-layer">
+            <div class="stat-box">
+                <div>NGƯỜI CHƠI (YOU)</div>
+                <div style="font-size: 20px; color: #2ecc71">HP: <span id="player-hp">100</span>%</div>
+                <div>Đạn: <span id="player-ammo">30</span>/30</div>
+                <div>Kẻ thù: <span id="enemy-count-disp">0</span></div>
+            </div>
+            <div style="margin-top: 5px; font-size: 12px; color: #aaa; font-style: italic;">
+                *Vật phẩm sẽ tự sinh sau mỗi 3 giây.
+            </div>
+        </div>
+
+        <!-- START MENU -->
+        <div id="start-menu" class="overlay-screen">
+            <h1>PUBG 2D ANALYST</h1>
+            <div class="menu-group">
+                <label>SỐ LƯỢNG KẺ THÙ</label>
+                <select id="sel-count">
+                    <option value="1">1 vs 1 (Solo)</option>
+                    <option value="2">1 vs 2</option>
+                    <option value="3">1 vs 3</option>
+                    <option value="4">1 vs 4</option>
+                    <option value="5" selected>1 vs 5 (Thử thách Bầy đàn)</option>
+                    <option value="boss" style="color:#9b59b6; font-weight:bold;">1 vs Boss (PPO AI)</option>
+                </select>
+            </div>
+            <div class="menu-group">
+                <label>ĐỘ KHÓ</label>
+                <select id="sel-diff">
+                    <option value="easy">Dễ (Máu thấp, Chậm)</option>
+                    <option value="normal" selected>Bình thường</option>
+                    <option value="hard">Khó (Máu trâu, Nhanh)</option>
+                </select>
+            </div>
+            <button onclick="startGame()">BẮT ĐẦU TRẬN ĐẤU</button>
+        </div>
+
+        <!-- GAME OVER SCREEN -->
+        <div id="game-over" class="overlay-screen">
+            <h1 id="winner-text">GAME OVER</h1>
+            <button onclick="showMenu()">VỀ MENU</button>
+        </div>
+    </div>
+
+    <div id="analyst-panel">
+        <h2>AI ANALYST SYSTEM</h2>
+
+        <!-- KHU VỰC HIỂN THỊ THUẬT TOÁN HỌC THUẬT -->
+        <div class="log-item" style="border-left: 3px solid #9b59b6; background: #1a1025;">
+            <span class="log-label" style="color: #c39bd3;">MODULE HỌC THUẬT:</span>
+            <div style="font-size: 13px; margin-bottom: 4px;">
+                <span style="color: #888;">Trí nhớ (Cognitive Memory): </span>
+                <span id="ai-memory" style="color: #9b59b6; font-weight: bold;">Trống</span>
+            </div>
+            <div style="font-size: 13px; margin-bottom: 4px;" id="evade-container">
+                <span style="color: #888;">Phản xạ (Evasion Steering): </span>
+                <span id="ai-evade" style="color: #e74c3c; font-weight: bold;">Bình thường</span>
+            </div>
+
+            <!-- NEW: PANEL CHO PPO -->
+            <div id="ppo-panel" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #555;">
+                <span style="color: #e74c3c; font-weight:bold; display:block; margin-bottom: 5px;">[PPO ALGORITHM (Actor-Critic)]</span>
+                <div style="font-size: 13px; margin-bottom: 4px;"><span style="color: #888;">Trạng thái (State): </span><span id="ppo-state" style="color: #fff;">[0,0,0,0]</span></div>
+                <div style="font-size: 13px; margin-bottom: 4px;"><span style="color: #888;">Hành động (Action): </span><span id="ppo-action" style="color: #f1c40f;">NONE</span></div>
+                <div style="font-size: 13px; margin-bottom: 4px;"><span style="color: #888;">Phần thưởng (Reward): </span><span id="ppo-reward" style="color: #2ecc71;">0</span></div>
+                <div style="font-size: 13px;"><span style="color: #888;">Giá trị Critic (Value): </span><span id="ppo-value" style="color: #3498db;">0.0</span></div>
+            </div>
+
+            <div style="font-size: 13px; margin-top: 4px; margin-bottom: 4px;">
+                <span style="color: #888;">Động học (Predictive Aiming): </span>
+                <span id="ai-predict" style="color: #f39c12; font-weight: bold;">Đang chờ...</span>
+            </div>
+            <div style="font-size: 13px;">
+                <span style="color: #888;">Trí tuệ Bầy đàn (Flocking): </span>
+                <span id="ai-flock" style="color: #3498db; font-weight: bold;">Độc lập</span>
+            </div>
+        </div>
+
+        <div style="font-size:12px; color:#666; margin-bottom:10px; text-align:center; font-style:italic;">
+            Đang phân tích kẻ thù gần nhất (Vòng vàng)
+        </div>
+
+        <!-- MATRIX TRANSITION -->
+        <div class="log-item">
+            <span class="log-label">MA TRẬN CHUYỂN TRẠNG THÁI (4x4):</span>
+            <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Hàng: Hiện tại | Cột: Tiếp theo (Xác suất %)</div>
+            <table class="matrix-table">
+                <thead>
+                    <tr>
+                        <th class="matrix-header-col">FROM\TO</th>
+                        <th>RETREAT</th>
+                        <th>ATTACK</th>
+                        <th>CHASE</th>
+                        <th>LOOT</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr id="trans-row-retreat" class="transition-row">
+                        <td class="matrix-header-row">RETREAT</td>
+                        <td id="p-rr">0%</td>
+                        <td id="p-ra">0%</td>
+                        <td id="p-rc">0%</td>
+                        <td id="p-rl">0%</td>
+                    </tr>
+                    <tr id="trans-row-attack" class="transition-row">
+                        <td class="matrix-header-row">ATTACK</td>
+                        <td id="p-ar">0%</td>
+                        <td id="p-aa">0%</td>
+                        <td id="p-ac">0%</td>
+                        <td id="p-al">0%</td>
+                    </tr>
+                    <tr id="trans-row-chase" class="transition-row">
+                        <td class="matrix-header-row">CHASE</td>
+                        <td id="p-cr">0%</td>
+                        <td id="p-ca">0%</td>
+                        <td id="p-cc">0%</td>
+                        <td id="p-cl">0%</td>
+                    </tr>
+                    <tr id="trans-row-loot" class="transition-row">
+                        <td class="matrix-header-row">LOOT</td>
+                        <td id="p-lr">0%</td>
+                        <td id="p-la">0%</td>
+                        <td id="p-lc">0%</td>
+                        <td id="p-ll">0%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- VISUAL UTILITY MATRIX -->
+        <div class="log-item">
+            <span class="log-label">HÀM TIỆN ÍCH (SỬ DỤNG FUZZY LOGIC):</span>
+            <table class="utility-table">
+                <thead>
+                    <tr>
+                        <th>Trạng thái</th>
+                        <th>Công thức Fuzzy</th>
+                        <th style="text-align:right">Điểm</th>
+                        <th>Tỷ lệ %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr id="row-retreat">
+                        <td class="state-name">RETREAT</td>
+                        <td class="state-calc">FuzzyLow(HP) × W</td>
+                        <td class="state-score" id="score-retreat">0</td>
+                        <td class="state-prob"><div class="prob-bar-bg"><div class="prob-bar-fill" id="bar-retreat"></div></div></td>
+                    </tr>
+                    <tr id="row-attack">
+                        <td class="state-name">ATTACK</td>
+                        <td class="state-calc">Vis + FuzzyNear(Dist)</td>
+                        <td class="state-score" id="score-attack">0</td>
+                        <td class="state-prob"><div class="prob-bar-bg"><div class="prob-bar-fill" id="bar-attack"></div></div></td>
+                    </tr>
+                    <tr id="row-chase">
+                        <td class="state-name">CHASE</td>
+                        <td class="state-calc">Base + Memory(t)</td>
+                        <td class="state-score" id="score-chase">0</td>
+                        <td class="state-prob"><div class="prob-bar-bg"><div class="prob-bar-fill" id="bar-chase"></div></div></td>
+                    </tr>
+                    <tr id="row-loot">
+                        <td class="state-name" style="color:#9b59b6">LOOT</td>
+                        <td class="state-calc">FuzzyLow(Res) × Dist</td>
+                        <td class="state-score" id="score-loot">0</td>
+                        <td class="state-prob"><div class="prob-bar-bg"><div class="prob-bar-fill" id="bar-loot"></div></div></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- TIME SERIES CHART SECTION -->
+        <div class="log-item">
+            <span class="log-label">BIỂU ĐỒ TRẠNG THÁI THEO THỜI GIAN:</span>
+            <canvas id="statChart" width="510" height="150"></canvas>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: #888; margin-top: 2px;">
+                <span>← Quá khứ</span>
+                <span>Hiện tại →</span>
+            </div>
+        </div>
+
+        <div class="log-item">
+            <span class="log-label">THÔNG SỐ BOT (TARGET):</span>
+            <div>HP Bot: <span id="ai-hp" class="log-value" style="float: right">100%</span></div>
+            <div>Đạn Bot: <span id="ai-ammo-disp" class="log-value" style="float: right; color: #f1c40f">30</span></div>
+            <div>Mục tiêu: <span id="ai-dist" class="log-value" style="float: right">0m</span></div>
+            <div>Tầm nhìn (LoS): <span id="ai-los" class="log-value" style="float: right">KHÔNG</span></div>
+        </div>
+
+        <div class="log-item">
+            <span class="log-label">TRẠNG THÁI & HÀNH VI:</span>
+            <div id="ai-state-disp" style="font-size: 20px; font-weight: bold; margin-bottom: 5px; color: #fff;">IDLE</div>
+            <span id="ai-decision" class="log-action" style="font-size: 14px; display: block;">Đang tính toán...</span>
+            <span id="ai-obstacle-log" style="font-size: 12px; color: #aaa; display: block; margin-top: 3px;">Hệ thống né vật cản: Sẵn sàng</span>
+        </div>
+
+        <div style="margin-top: auto; font-size: 13px; color: #666; border-top: 1px solid #333; padding-top: 10px;">
+            ĐIỀU KHIỂN:<br>
+            [W,A,S,D] Di chuyển<br>
+            [Chuột] Ngắm & Click bắn<br>
+        </div>
+    </div>
+    <!--<script src="PUPG2D.js">-->
+    <script>
+
+        // --- CẤU HÌNH GAME ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // UI Elements
+        const elPlayerHp = document.getElementById('player-hp');
+        const elPlayerAmmo = document.getElementById('player-ammo');
+        const elEnemyCount = document.getElementById('enemy-count-disp');
+        const elLootMsg = document.getElementById('loot-msg');
+
+        // AI Analyst Elements
+        const elAiDist = document.getElementById('ai-dist');
+        const elAiLos = document.getElementById('ai-los');
+        const elAiHp = document.getElementById('ai-hp');
+        const elAiAmmo = document.getElementById('ai-ammo-disp');
+        const elAiDecision = document.getElementById('ai-decision');
+        const elAiStateDisp = document.getElementById('ai-state-disp');
+        const elAiObstacleLog = document.getElementById('ai-obstacle-log');
+
+        const elAiPredict = document.getElementById('ai-predict');
+        const elAiFlock = document.getElementById('ai-flock');
+        const elAiMemory = document.getElementById('ai-memory');
+        const elAiEvade = document.getElementById('ai-evade');
+        const elEvadeContainer = document.getElementById('evade-container');
+
+        // PPO UI Elements
+        const elPpoPanel = document.getElementById('ppo-panel');
+        const elPpoState = document.getElementById('ppo-state');
+        const elPpoAction = document.getElementById('ppo-action');
+        const elPpoReward = document.getElementById('ppo-reward');
+        const elPpoValue = document.getElementById('ppo-value');
+
+        // Score Elements
+        const elScoreRetreat = document.getElementById('score-retreat');
+        const elScoreAttack = document.getElementById('score-attack');
+        const elScoreChase = document.getElementById('score-chase');
+        const elScoreLoot = document.getElementById('score-loot');
+
+        // Probability Bars
+        const elBarRetreat = document.getElementById('bar-retreat');
+        const elBarAttack = document.getElementById('bar-attack');
+        const elBarChase = document.getElementById('bar-chase');
+        const elBarLoot = document.getElementById('bar-loot');
+
+        // Chart
+        const chartCanvas = document.getElementById('statChart');
+        const chartCtx = chartCanvas.getContext('2d');
+
+        const gameOverScreen = document.getElementById('game-over');
+        const startMenuScreen = document.getElementById('start-menu');
+        const winnerText = document.getElementById('winner-text');
+
+        // Kích thước màn hình
+        canvas.width = 800;
+        canvas.height = 600;
+
+        // --- GAME CONSTANTS ---
+        const TILE_SIZE = 40;
+        const PLAYER_SPEED = 3;
+        const BULLET_SPEED = 10;
+        const FIRERATE = 10;
+        const MAX_AMMO = 30;
+
+        // Dynamic Difficulty Variables
+        let AI_SPEED = 2.5;
+        let AI_MAX_HP = 100;
+        let ENEMY_COUNT = 1;
+        let IS_BOSS_MODE = false;
+
+        // --- CLASSES ---
+        class Vector {
+            constructor(x, y) { this.x = x; this.y = y; }
+            add(v) { return new Vector(this.x + v.x, this.y + v.y); }
+            sub(v) { return new Vector(this.x - v.x, this.y - v.y); }
+            mult(n) { return new Vector(this.x * n, this.y * n); }
+            mag() { return Math.sqrt(this.x * this.x + this.y * this.y); }
+            normalize() {
+                let m = this.mag();
+                return m === 0 ? new Vector(0, 0) : new Vector(this.x / m, this.y / m);
+            }
+        }
+
+        class LinearPPO {
+            constructor(stateDim, actionDim) {
+                this.stateDim = stateDim;
+                this.actionDim = actionDim;
+
+                // Khởi tạo trọng số ngẫu nhiên nhỏ cho Mạng Neural Actor & Critic
+                this.theta = Array(actionDim).fill(0).map(() => Array(stateDim).fill(0).map(() => (Math.random() - 0.5) * 0.1));
+                this.beta = Array(actionDim).fill(0);
+
+                this.phi = Array(stateDim).fill(0).map(() => (Math.random() - 0.5) * 0.1);
+                this.alpha = 0;
+
+                this.lrActor = 0.002;  // Đã giảm từ 0.005 (Boss học né đạn chậm hơn 1 chút)
+                this.lrCritic = 0.005; // Đã giảm từ 0.01
+                this.clipRatio = 0.2; // PPO Clipping Epsilon
+                this.gamma = 0.95;
+
+                this.memory = [];
+                this.batchSize = 30; // Cập nhật thuật toán sau mỗi 30 frames
+            }
+
+            getPolicy(s) {
+                // Suy diễn Forward Pass: Tính Linear Softmax cho Actor
+                let logits = [];
+                for (let i = 0; i < this.actionDim; i++) {
+                    let val = this.beta[i];
+                    for (let j = 0; j < this.stateDim; j++) val += this.theta[i][j] * s[j];
+                    logits.push(val);
+                }
+                let maxLogit = Math.max(...logits);
+                let exps = logits.map(l => Math.exp(l - maxLogit));
+                let sumExp = exps.reduce((a, b) => a + b, 0);
+                return exps.map(e => e / sumExp);
+            }
+
+            getValue(s) {
+                // Suy diễn Forward Pass: Mạng Critic
+                let v = this.alpha;
+                for (let j = 0; j < this.stateDim; j++) v += this.phi[j] * s[j];
+                return v;
+            }
+
+            selectAction(s) {
+                let probs = this.getPolicy(s);
+                let r = Math.random();
+                let sum = 0, a = 0;
+                for (let i = 0; i < probs.length; i++) {
+                    sum += probs[i];
+                    if (r <= sum) { a = i; break; }
+                }
+                return { action: a, prob: probs[a], value: this.getValue(s) };
+            }
+
+            step(s, a, r, prob, v) {
+                this.memory.push({ s, a, r, prob, v });
+                if (this.memory.length >= this.batchSize) this.train();
+            }
+
+            train() {
+                // 1. Tính toán Return (Lợi tức)
+                let returns = Array(this.memory.length).fill(0);
+                let G = 0;
+                for (let i = this.memory.length - 1; i >= 0; i--) {
+                    G = this.memory[i].r + this.gamma * G;
+                    returns[i] = G;
+                }
+
+                // 2. Tính Advantage: A = R - V(s) & Chuẩn hóa
+                let advs = this.memory.map((m, i) => returns[i] - m.v);
+                let meanAdv = advs.reduce((a, b) => a + b, 0) / advs.length;
+                let stdAdv = Math.sqrt(advs.reduce((a, b) => a + (b - meanAdv) ** 2, 0) / advs.length) || 1e-8;
+                advs = advs.map(a => (a - meanAdv) / stdAdv);
+
+                // 3. PPO Update Logic (Gradient Ascent/Descent)
+                for (let epoch = 0; epoch < 3; epoch++) {
+                    for (let i = 0; i < this.memory.length; i++) {
+                        let mem = this.memory[i];
+                        let currentProbs = this.getPolicy(mem.s);
+                        let ratio = currentProbs[mem.a] / mem.prob;
+
+                        let surr1 = ratio * advs[i];
+                        let surr2 = Math.max(1 - this.clipRatio, Math.min(1 + this.clipRatio, ratio)) * advs[i];
+
+                        // Nếu obj chưa bị clip thì gradient có tác dụng, ngược lại = 0
+                        let dRatio = (surr1 <= surr2) ? (advs[i] / mem.prob) : 0;
+
+                        if (dRatio !== 0) {
+                            for (let act = 0; act < this.actionDim; act++) {
+                                let indicator = (act === mem.a) ? 1 : 0;
+                                let dProb_dLogit = currentProbs[mem.a] * (indicator - currentProbs[act]);
+                                let dLoss_dLogit = dRatio * dProb_dLogit;
+
+                                // Update trọng số Actor
+                                for (let j = 0; j < this.stateDim; j++) this.theta[act][j] += this.lrActor * dLoss_dLogit * mem.s[j];
+                                this.beta[act] += this.lrActor * dLoss_dLogit;
+                            }
+                        }
+
+                        // Cập nhật mạng Critic bằng Gradient Descent trên MSE
+                        let dV = this.getValue(mem.s) - returns[i];
+                        for (let j = 0; j < this.stateDim; j++) this.phi[j] -= this.lrCritic * dV * mem.s[j];
+                        this.alpha -= this.lrCritic * dV;
+                    }
+                }
+                this.memory = []; // Reset Buffer sau huấn luyện
+            }
+        }
+
+        class Entity {
+            constructor(x, y, color, isAi, maxHp, isBoss = false) {
+                this.pos = new Vector(x, y);
+                this.velocity = new Vector(0, 0); // Vận tốc hiện tại (Dành cho Kinematics)
+                this.currentMoveDir = new Vector(0, 0); // Vận tốc nội suy (Smoothing vector)
+                this.radius = 15;
+                this.color = color;
+                this.maxHp = maxHp || 100;
+                this.hp = this.maxHp;
+                this.angle = 0;
+                this.ammo = MAX_AMMO;
+                this.isAi = isAi;
+                this.isBoss = isBoss; // Kích hoạt Boss Q-Learning
+                this.shootTimer = 0;
+                this.reloadTimer = 0;
+                this.dead = false;
+
+                // AI specific vars
+                this.lastState = "CHASE";
+                this.patrolPoint = null;
+                this.patrolTimer = 0;
+                this.stuckTimer = 0;
+                this.avoidanceRay = null;
+
+                // --- NEW: MÔ HÌNH TRÍ NHỚ (COGNITIVE MEMORY) ---
+                this.memoryPos = null;      // Last Known Position (LKP)
+                this.memoryTimer = 0;       // Thời gian ghi nhớ (frames)
+                this.isEvadingBullet = false; // Trạng thái né đạn
+
+                // --- NEW: PPO VARIABLES (Chỉ dùng cho Boss) ---
+                if (this.isBoss) {
+                    this.ppo = new LinearPPO(4, 4); // 4 Input States, 4 Output Actions
+                    this.lastStateArr = [0, 0, 0, 1];
+                    this.lastActionIdx = 0;
+                    this.lastActionProb = 0.25;
+                    this.lastActionValue = 0;
+                    this.ppoEvasionVector = new Vector(0, 0);
+                    this.tookDamageThisFrame = false;
+                    this.lastReward = 0;
+                    this.radius = 20; // Boss to hơn bình thường
+                }
+
+                // Analyst Data Holder (for each bot)
+                this.analystData = {
+                    scores: { retreat: 0, attack: 0, chase: 0, loot: 0 },
+                    probabilities: { retreat: 0, attack: 0, chase: 0, loot: 0 },
+                    decision: "",
+                    obstacleText: "",
+                    canSee: false,
+                    dist: 0,
+                    // Cho module học thuật
+                    predictText: "Đang chờ...",
+                    flockText: "Độc lập",
+                    memoryText: "Trống",
+                    evadeText: "Bình thường",
+                    predictedPos: null,
+                    flockNeighbors: []
+                };
+            }
+
+            draw(isFocused) {
+                if (this.dead) return;
+
+                ctx.save();
+                ctx.translate(this.pos.x, this.pos.y);
+                ctx.rotate(this.angle);
+
+                // Draw Body
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.strokeStyle = '#222';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Draw Hands/Gun
+                ctx.fillStyle = '#333';
+                ctx.fillRect(5, -5, 20, 10);
+
+                // Helmet
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius - 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+
+                // Focused Indicator (Analyst Target)
+                if (isFocused) {
+                    ctx.beginPath();
+                    ctx.arc(this.pos.x, this.pos.y, this.radius + 8, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#f1c40f';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                // Draw Health Bar
+                if (this.hp < this.maxHp) {
+                    ctx.fillStyle = 'red';
+                    ctx.fillRect(this.pos.x - 20, this.pos.y - 30, 40, 5);
+                    ctx.fillStyle = '#2ecc71';
+                    ctx.fillRect(this.pos.x - 20, this.pos.y - 30, 40 * (this.hp / this.maxHp), 5);
+                }
+
+                // Hiển thị vòng hào quang nếu là Boss
+                if (this.isBoss && !this.dead) {
+                    ctx.beginPath();
+                    ctx.arc(this.pos.x, this.pos.y, this.radius + 15, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(155, 89, 182, 0.5)';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([10, 5]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                // --- DRAW SENSORS (Whiskers) ---
+                if (this.isAi && this.avoidanceRay && isFocused) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.pos.x, this.pos.y);
+                    ctx.lineTo(this.avoidanceRay.x, this.avoidanceRay.y);
+                    ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+                    ctx.setLineDash([2, 2]);
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    ctx.fillStyle = 'yellow';
+                    ctx.beginPath();
+                    ctx.arc(this.avoidanceRay.x, this.avoidanceRay.y, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // --- HIỂN THỊ CẢNH BÁO NẾU ĐANG NÉ ĐẠN ---
+                if (this.isAi && this.isEvadingBullet) {
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.font = '12px Arial';
+                    ctx.fillText("! NE !", this.pos.x - 15, this.pos.y - 25);
+                }
+            }
+
+            takeDamage(amount) {
+                this.hp -= amount;
+                if (this.isBoss) this.tookDamageThisFrame = true; // Kích hoạt hình phạt Q-Learning
+                if (this.hp <= 0) {
+                    this.hp = 0;
+                    this.dead = true;
+                }
+            }
+        }
+
+        class Bullet {
+            constructor(x, y, angle, owner) {
+                this.pos = new Vector(x, y);
+                this.vel = new Vector(Math.cos(angle), Math.sin(angle)).mult(BULLET_SPEED);
+                this.owner = owner;
+                this.radius = 3;
+                this.active = true;
+            }
+
+            update() {
+                this.pos = this.pos.add(this.vel);
+                if (this.pos.x < 0 || this.pos.x > canvas.width || this.pos.y < 0 || this.pos.y > canvas.height) {
+                    this.active = false;
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#f1c40f';
+                ctx.fill();
+            }
+        }
+
+        class Obstacle {
+            constructor(x, y, w, h, type) {
+                this.x = x; this.y = y; this.w = w; this.h = h;
+                this.type = type;
+            }
+
+            draw() {
+                ctx.fillStyle = this.type === 'crate' ? '#8d6e63' : '#388e3c';
+                ctx.fillRect(this.x, this.y, this.w, this.h);
+
+                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                ctx.strokeRect(this.x, this.y, this.w, this.h);
+                if (this.type === 'crate') {
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y); ctx.lineTo(this.x + this.w, this.y + this.h);
+                    ctx.moveTo(this.x + this.w, this.y); ctx.lineTo(this.x, this.y + this.h);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        class Loot {
+            constructor(x, y, type) {
+                this.pos = new Vector(x, y);
+                this.type = type; // 'medkit', 'ammo'
+                this.radius = 12;
+                this.active = true;
+            }
+
+            draw() {
+                if (!this.active) return;
+
+                ctx.save();
+                ctx.translate(this.pos.x, this.pos.y);
+
+                // Draw Box
+                ctx.fillStyle = this.type === 'medkit' ? '#e74c3c' : '#27ae60';
+                ctx.fillRect(-10, -10, 20, 20);
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(-10, -10, 20, 20);
+
+                // Draw Icon
+                ctx.fillStyle = '#fff';
+                if (this.type === 'medkit') {
+                    // Cross
+                    ctx.fillRect(-3, -7, 6, 14);
+                    ctx.fillRect(-7, -3, 14, 6);
+                } else {
+                    // Ammo stripes
+                    ctx.fillRect(-4, -6, 3, 12);
+                    ctx.fillRect(1, -6, 3, 12);
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // --- GLOBAL VARIABLES ---
+        let player = null; // Initialized to null
+        let enemies = []; // Array to store multiple bots
+        let bullets = [];
+        let obstacles = [];
+        let loots = [];
+        let keys = {};
+        let mouse = new Vector(0, 0);
+        let gameRunning = false;
+        let lootSpawnTimer = 0; // Timer for auto looting
+
+        // --- CHART VARIABLES (TIME SERIES) ---
+        let stateHistory = [];
+        const MAX_HISTORY = 200;
+
+        // --- MENU FUNCTIONS ---
+        function startGame() {
+            const countSel = document.getElementById('sel-count');
+            const diffSel = document.getElementById('sel-diff');
+            const difficulty = diffSel.value;
+
+            if (countSel.value === "boss") {
+                IS_BOSS_MODE = true;
+                ENEMY_COUNT = 1;
+
+                // Áp dụng độ khó cho Boss PPO (Đã giảm để dễ hơn)
+                if (difficulty === 'easy') {
+                    AI_SPEED = 1.6;
+                    AI_MAX_HP = 200;
+                } else if (difficulty === 'normal') {
+                    AI_SPEED = 2.2;
+                    AI_MAX_HP = 350; // Trâu vừa phải
+                } else if (difficulty === 'hard') {
+                    AI_SPEED = 3.0;
+                    AI_MAX_HP = 500; // Boss mạnh
+                }
+            } else {
+                IS_BOSS_MODE = false;
+                ENEMY_COUNT = parseInt(countSel.value);
+
+                // Difficulty Logic cho Bot thường
+                if (difficulty === 'easy') {
+                    AI_SPEED = 1.8;
+                    AI_MAX_HP = 80;
+                } else if (difficulty === 'normal') {
+                    AI_SPEED = 2.6;
+                    AI_MAX_HP = 100;
+                } else if (difficulty === 'hard') {
+                    AI_SPEED = 3.5;
+                    AI_MAX_HP = 150;
+                }
+            }
+
+            startMenuScreen.style.display = 'none';
+            init();
+        }
+
+        function showMenu() {
+            gameOverScreen.style.display = 'none';
+            startMenuScreen.style.display = 'flex';
+            gameRunning = false;
+        }
+
+        // --- INIT ---
+        function init() {
+            player = new Entity(100, 300, '#3498db', false, 100);
+
+            enemies = [];
+            bullets = [];
+            obstacles = [];
+            loots = [];
+            lootSpawnTimer = 0;
+
+            gameRunning = true;
+            gameOverScreen.style.display = 'none';
+
+            // Reset stats
+            stateHistory = [];
+            for (let i = 0; i < MAX_HISTORY; i++) stateHistory.push(null);
+
+            // Spawn Zones & Obstacles
+            const playerStart = { x: 100, y: 300, r: 100 };
+
+            // Create Obstacles
+            let obsCount = 0;
+            let attempts = 0; // Biến đếm để tránh vòng lặp vô tận
+
+            while (obsCount < 15 && attempts < 1000) {
+                let w = 40 + Math.random() * 40;
+                let h = 40 + Math.random() * 40;
+                let x = 50 + Math.random() * (canvas.width - 100);
+                let y = 50 + Math.random() * (canvas.height - 100);
+
+                attempts++;
+
+                // Check player zone
+                let inPlayerZone = (x < playerStart.x + playerStart.r && x + w > playerStart.x - playerStart.r &&
+                    y < playerStart.y + playerStart.r && y + h > playerStart.y - playerStart.r);
+
+                // Also check a generic enemy spawn area on right side to not block it completely
+                let inEnemyZone = (x > 600);
+                let tooClose = false;
+                let buffer = 40;
+
+                for (let other of obstacles) {
+                    if (x < other.x + other.w + buffer &&
+                        x + w > other.x - buffer &&
+                        y < other.y + other.h + buffer &&
+                        y + h > other.y - buffer) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+
+                if (!inPlayerZone && !inEnemyZone && !tooClose) {
+                    obstacles.push(new Obstacle(x, y, w, h, Math.random() > 0.5 ? 'crate' : 'tree'));
+                    obsCount++;
+                    attempts = 0;
+                }
+            }
+
+            // Spawn Enemies
+            for (let i = 0; i < ENEMY_COUNT; i++) {
+                let ex, ey, attempts = 0;
+                do {
+                    ex = 600 + Math.random() * 150;
+                    ey = 50 + Math.random() * (canvas.height - 100);
+                    attempts++;
+                } while (checkSpawnCollision(ex, ey) && attempts < 50);
+
+                if (IS_BOSS_MODE) {
+                    enemies.push(new Entity(ex, ey, '#9b59b6', true, AI_MAX_HP, true)); // Boss màu tím
+                } else {
+                    enemies.push(new Entity(ex, ey, '#e74c3c', true, AI_MAX_HP, false));
+                }
+            }
+
+            for (let i = 0; i < 5; i++) spawnLoot('medkit');
+            for (let i = 0; i < 5; i++) spawnLoot('ammo');
+        }
+
+        function checkSpawnCollision(x, y) {
+            for (let obs of obstacles) {
+                if (x > obs.x - 20 && x < obs.x + obs.w + 20 &&
+                    y > obs.y - 20 && y < obs.y + obs.h + 20) return true;
+            }
+            return false;
+        }
+
+        function spawnLoot(type) {
+            let attempts = 0;
+            while (attempts < 50) {
+                let x = 50 + Math.random() * (canvas.width - 100);
+                let y = 50 + Math.random() * (canvas.height - 100);
+
+                let blocked = false;
+                for (let obs of obstacles) {
+                    if (x > obs.x - 20 && x < obs.x + obs.w + 20 &&
+                        y > obs.y - 20 && y < obs.y + obs.h + 20) {
+                        blocked = true;
+                        break;
+                    }
+                }
+                if (!blocked) {
+                    loots.push(new Loot(x, y, type));
+                    return true;
+                }
+                attempts++;
+            }
+            return false;
+        }
+
+        // --- INPUT HANDLING ---
+        window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+        window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+        canvas.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+        });
+        canvas.addEventListener('mousedown', () => {
+            if (gameRunning && player && player.shootTimer <= 0 && player.ammo > 0) {
+                shoot(player);
+                player.ammo--;
+                player.shootTimer = FIRERATE;
+            }
+        });
+
+        function shoot(shooter) {
+            let spread = (Math.random() - 0.5) * 0.1;
+            bullets.push(new Bullet(shooter.pos.x, shooter.pos.y, shooter.angle + spread, shooter.isAi ? 'ai' : 'player'));
+        }
+
+        // --- PHYSICS & LOGIC ---
+        function checkCollision(circle, rect) {
+            let distX = Math.abs(circle.x - rect.x - rect.w / 2);
+            let distY = Math.abs(circle.y - rect.y - rect.h / 2);
+
+            if (distX > (rect.w / 2 + circle.r)) return false;
+            if (distY > (rect.h / 2 + circle.r)) return false;
+
+            if (distX <= (rect.w / 2)) return true;
+            if (distY <= (rect.h / 2)) return true;
+
+            let dx = distX - rect.w / 2;
+            let dy = distY - rect.h / 2;
+            return (dx * dx + dy * dy <= (circle.r * circle.r));
+        }
+
+        function checkCircleCollision(c1, c2) {
+            let dx = c1.pos.x - c2.pos.x;
+            let dy = c1.pos.y - c2.pos.y;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+            return dist < (c1.radius + c2.radius);
+        }
+
+        function hasLineOfSight(e1, e2) {
+            let dist = e2.pos.sub(e1.pos).mag();
+            let dir = e2.pos.sub(e1.pos).normalize();
+
+            for (let i = 0; i < dist; i += 20) {
+                let point = e1.pos.add(dir.mult(i));
+                for (let obs of obstacles) {
+                    if (point.x > obs.x && point.x < obs.x + obs.w &&
+                        point.y > obs.y && point.y < obs.y + obs.h) {
+                        return false; // Blocked
+                    }
+                }
+            }
+            return true;
+        }
+
+        function isPositionValid(pos, radius) {
+            if (pos.x < radius || pos.x > canvas.width - radius || pos.y < radius || pos.y > canvas.height - radius) return false;
+            for (let obs of obstacles) {
+                if (checkCollision({ x: pos.x, y: pos.y, r: radius }, obs)) return false;
+            }
+            return true;
+        }
+
+        function avoidObstacles(bot, pos, dir, radius) {
+            if (dir.mag() === 0) return dir;
+            const LOOK_AHEAD = 60;
+            let centerPos = pos.add(dir.normalize().mult(LOOK_AHEAD));
+
+            bot.avoidanceRay = centerPos;
+
+            if (isPositionValid(centerPos, radius)) return dir;
+
+            let baseAngle = Math.atan2(dir.y, dir.x);
+            for (let i = 1; i <= 6; i++) {
+                let offset = i * (Math.PI / 12);
+
+                let a1 = baseAngle + offset;
+                let v1 = new Vector(Math.cos(a1), Math.sin(a1));
+                if (isPositionValid(pos.add(v1.mult(LOOK_AHEAD)), radius)) return v1;
+
+                let a2 = baseAngle - offset;
+                let v2 = new Vector(Math.cos(a2), Math.sin(a2));
+                if (isPositionValid(pos.add(v2.mult(LOOK_AHEAD)), radius)) return v2;
+            }
+            return dir.mult(-1);
+        }
+
+        // --- DRAW CHART (TIME SERIES) ---
+        function drawStateChart() {
+            const w = chartCanvas.width;
+            const h = chartCanvas.height;
+            chartCtx.clearRect(0, 0, w, h);
+
+            const yChase = 30, yAttack = 60, yLoot = 90, yRetreat = 120;
+
+            chartCtx.fillStyle = '#181818';
+            chartCtx.fillRect(0, 0, w, h);
+            chartCtx.strokeStyle = '#333';
+            chartCtx.lineWidth = 1;
+
+            chartCtx.beginPath(); chartCtx.moveTo(0, yChase + 15); chartCtx.lineTo(w, yChase + 15); chartCtx.stroke();
+            chartCtx.beginPath(); chartCtx.moveTo(0, yAttack + 15); chartCtx.lineTo(w, yAttack + 15); chartCtx.stroke();
+            chartCtx.beginPath(); chartCtx.moveTo(0, yLoot + 15); chartCtx.lineTo(w, yLoot + 15); chartCtx.stroke();
+
+            chartCtx.font = '11px Consolas';
+            chartCtx.fillStyle = '#3498db'; chartCtx.fillText("CHASE", 5, yChase + 4);
+            chartCtx.fillStyle = '#e67e22'; chartCtx.fillText("ATTACK", 5, yAttack + 4);
+            chartCtx.fillStyle = '#9b59b6'; chartCtx.fillText("LOOT", 5, yLoot + 4);
+            chartCtx.fillStyle = '#e74c3c'; chartCtx.fillText("RETREAT", 5, yRetreat + 4);
+
+            const stepX = w / MAX_HISTORY;
+            chartCtx.lineWidth = 2;
+
+            for (let i = 1; i < stateHistory.length; i++) {
+                let state = stateHistory[i];
+                let prevState = stateHistory[i - 1];
+                if (!state) continue;
+
+                let y = 0, color = '#fff';
+                if (state === 'CHASE') { y = yChase; color = '#3498db'; }
+                else if (state === 'ATTACK') { y = yAttack; color = '#e67e22'; }
+                else if (state === 'RETREAT') { y = yRetreat; color = '#e74c3c'; }
+                else if (state === 'LOOT') { y = yLoot; color = '#9b59b6'; }
+
+                let prevY = y;
+                if (prevState) {
+                    if (prevState === 'CHASE') prevY = yChase;
+                    else if (prevState === 'ATTACK') prevY = yAttack;
+                    else if (prevState === 'RETREAT') prevY = yRetreat;
+                    else if (prevState === 'LOOT') prevY = yLoot;
+                }
+
+                let x1 = (i - 1) * stepX;
+                let x2 = i * stepX;
+
+                chartCtx.strokeStyle = color;
+                chartCtx.beginPath();
+                chartCtx.moveTo(x1, prevY);
+                if (prevY !== y) chartCtx.lineTo(x1, y);
+                chartCtx.lineTo(x2, y);
+                chartCtx.stroke();
+            }
+        }
+
+        // --- HÀM THUỘC TÍNH MỜ (FUZZY MEMBERSHIP FUNCTIONS) ---
+        function fuzzyDegreeLow(val, min, max) {
+            if (val <= min) return 1.0;
+            if (val >= max) return 0.0;
+            return (max - val) / (max - min);
+        }
+
+
+        function fuzzyDegreeHigh(val, min, max) {
+            if (val >= max) return 1.0;
+            if (val <= min) return 0.0;
+            return (val - min) / (max - min);
+        }
+
+        // --- NEW: PPO LOGIC FOR BOSS ---
+        function processPPO(bot) {
+            if (bot.dead) return;
+
+            // 1. Trích xuất môi trường thành Ma trận State Liên tục
+            let closestBullet = null;
+            let minDist = 300;
+
+            for (let b of bullets) {
+                if (b.owner === 'player') {
+                    let d = bot.pos.sub(b.pos).mag();
+                    if (d < minDist) {
+                        minDist = d;
+                        closestBullet = b;
+                    }
+                }
+            }
+
+            let s1 = 1.0, s2 = 0, s3 = 0;
+            let bulletRelativeVel = new Vector(0, 0);
+
+            if (closestBullet) {
+                s1 = minDist / 300.0;
+                let vToBot = bot.pos.sub(closestBullet.pos);
+                bulletRelativeVel = closestBullet.vel;
+
+                s2 = (bulletRelativeVel.x * vToBot.y - bulletRelativeVel.y * vToBot.x) / 3000.0;
+                s3 = (vToBot.x * bulletRelativeVel.x + vToBot.y * bulletRelativeVel.y) / 3000.0;
+            }
+
+            let s4 = bot.hp / bot.maxHp;
+            let currentStateArr = [s1, Math.max(-1, Math.min(1, s2)), Math.max(-1, Math.min(1, s3)), s4];
+
+            // 2. Tính toán Reward cho action trước đó
+            let reward = 0;
+            if (bot.tookDamageThisFrame) reward = -10.0;
+            else if (s1 < 0.5 && s3 > 0) reward = -0.5; // Đạn đang lao tới gần
+            else if (bot.lastStateArr[0] < 0.5 && s1 >= 0.5) reward = +5.0; // Vừa né đạn thành công
+            else if (closestBullet && bot.lastActionIdx !== 0) reward = -0.1; // Phạt nhẹ khi di chuyển lúc có đạn ở xa
+            else reward = 0.0; // Trạng thái tĩnh (an toàn tuyệt đối)
+
+            bot.lastReward = reward;
+
+            // 3. Đưa vào Memory (Sẽ tự động Train PPO nếu đủ lượng Batch)
+            bot.ppo.step(bot.lastStateArr, bot.lastActionIdx, reward, bot.lastActionProb, bot.lastActionValue);
+
+            // 4. Mạng Neural Chọn Action Mới
+            let { action, prob, value } = bot.ppo.selectAction(currentStateArr);
+
+            // 5. Phiên dịch và Áp dụng Action
+            const actions = ["NONE", "STRAFE_LEFT", "STRAFE_RIGHT", "BACK"];
+            let chosenActionName = actions[action];
+
+            bot.ppoEvasionVector = new Vector(0, 0);
+            bot.isEvadingBullet = (action !== 0);
+
+            if (closestBullet && action !== 0) {
+                let perpLeft = new Vector(-bulletRelativeVel.y, bulletRelativeVel.x).normalize();
+                let perpRight = new Vector(bulletRelativeVel.y, -bulletRelativeVel.x).normalize();
+                let back = new Vector(-bulletRelativeVel.x, -bulletRelativeVel.y).normalize();
+
+                // Đã giảm hệ số nhân lực né đạn để player dễ bắn trúng hơn
+                if (action === 1) bot.ppoEvasionVector = perpLeft.mult(2.2);
+                if (action === 2) bot.ppoEvasionVector = perpRight.mult(2.2);
+                if (action === 3) bot.ppoEvasionVector = back.mult(1.5);
+            }
+
+            // 6. Lưu Data cho frame tiếp theo
+            bot.lastStateArr = currentStateArr;
+            bot.lastActionIdx = action;
+            bot.lastActionProb = prob;
+            bot.lastActionValue = value;
+
+            // 7. Cập nhật giao diện Analyst Data
+            bot.analystData.ppoState = `[${s1.toFixed(2)}, ${s2.toFixed(2)}, ${s3.toFixed(2)}, ${s4.toFixed(2)}]`;
+            bot.analystData.ppoAction = chosenActionName + ` (${(prob * 100).toFixed(0)}%)`;
+            bot.analystData.ppoReward = reward.toFixed(2);
+            bot.analystData.ppoValue = value.toFixed(3);
+        }
+
+        // --- AI LOGIC FOR A SINGLE BOT ---
+        function processBotLogic(bot) {
+            if (bot.dead) return;
+
+            let distVec = player.pos.sub(bot.pos);
+            let dist = distVec.mag();
+            let canSee = hasLineOfSight(bot, player);
+            let decisionText = "";
+            let obstacleText = "Đường thoáng";
+            let moveDir = new Vector(0, 0);
+
+            let predictedPos = null;
+            let predictText = "Vô hiệu hóa";
+            let flockNeighbors = [];
+            let flockText = "Độc lập";
+            let memoryText = "Trống";
+            let evadeText = "Bình thường";
+
+            // --- CẬP NHẬT TRÍ NHỚ (COGNITIVE MEMORY) ---
+            if (canSee) {
+                bot.memoryPos = new Vector(player.pos.x, player.pos.y);
+                bot.memoryTimer = 180; // Ghi nhớ vị trí cuối cùng trong 3 giây (180 frames)
+                memoryText = "Đang cập nhật trực tiếp";
+            } else {
+                if (bot.memoryTimer > 0) {
+                    bot.memoryTimer--;
+                    memoryText = `Nhớ vị trí (${Math.round(bot.memoryPos.x)}, ${Math.round(bot.memoryPos.y)}) - ${Math.round(bot.memoryTimer / 60)}s`;
+                } else {
+                    bot.memoryPos = null;
+                    memoryText = "Đã quên mất mục tiêu";
+                }
+            }
+
+            // --- 1. TÍNH TOÁN ĐIỂM SỐ BẰNG LOGIC MỜ (FUZZY LOGIC) ---
+            // Biến ngôn ngữ: HP_is_Low, Ammo_is_Low, Target_is_Near
+            let fuzzyHpLow = fuzzyDegreeLow(bot.hp, 20, 80);
+            let fuzzyAmmoLow = fuzzyDegreeLow(bot.ammo, 5, 20);
+            let fuzzyDistNear = fuzzyDegreeLow(dist, 100, 500);
+
+            // Score Retreat: Nếu HP quá thấp -> Điểm cực cao
+            let scoreRetreat = fuzzyHpLow * 150 + ((100 - bot.hp) * 1.0);
+
+            // Score Attack: Nếu có tầm nhìn và khoảng cách gần -> Điểm cao
+            let scoreAttack = 0;
+            if (canSee) {
+                scoreAttack = 80 + (fuzzyDistNear * 100);
+                if (bot.ammo <= 0) scoreAttack = 0;
+            }
+
+            // Score Chase (Bao gồm cả việc tìm kiếm dựa trên trí nhớ)
+            let scoreChase = 60; // Điểm nền mặc định
+            if (bot.memoryPos && bot.memoryTimer > 0 && !canSee) {
+                scoreChase = 120; // Đẩy ưu tiên lên cao để đi "điều tra"
+            }
+
+            // Score Loot: Dựa trên độ nghèo nàn (Fuzzy) và khoảng cách tới đồ
+            let scoreLoot = 0;
+            let targetLoot = null;
+            for (let l of loots) {
+                if (!l.active) continue;
+                let d = l.pos.sub(bot.pos).mag();
+                let fuzzyItemNear = fuzzyDegreeLow(d, 50, 600);
+                let currentItemScore = 0;
+
+                if (l.type === 'ammo') {
+                    currentItemScore = (fuzzyAmmoLow * 150) + (fuzzyItemNear * 50);
+                    if (bot.ammo === 0) currentItemScore += 500; // Khẩn cấp
+                } else if (l.type === 'medkit') {
+                    currentItemScore = (fuzzyHpLow * 150) + (fuzzyItemNear * 50);
+                    if (bot.hp < 30) currentItemScore += 500; // Khẩn cấp
+                }
+
+                if (currentItemScore > scoreLoot) {
+                    scoreLoot = currentItemScore;
+                    targetLoot = l;
+                }
+            }
+
+            // Giảm điểm nếu bị kẹt
+            if (bot.stuckTimer > 30) {
+                decisionText = "⚠️ BỊ KẸT! Đang ép chuyển trạng thái...";
+                scoreAttack -= 200; scoreRetreat -= 200; scoreChase += 50;
+            }
+
+            // 2. Lựa chọn trạng thái
+            let maxScore = Math.max(scoreRetreat, scoreAttack, scoreChase, scoreLoot);
+            let state = "";
+
+            if (maxScore === scoreLoot) state = "LOOT";
+            else if (maxScore === scoreRetreat) state = "RETREAT";
+            else if (maxScore === scoreAttack) state = "ATTACK";
+            else state = "CHASE";
+
+            bot.lastState = state;
+
+            // 3. Thực thi hành vi (Kèm Kinematics)
+            if (canSee) {
+                let t = dist / BULLET_SPEED;
+                predictedPos = player.pos.add(player.velocity.mult(t));
+                predictedPos.x = Math.max(0, Math.min(canvas.width, predictedPos.x));
+                predictedPos.y = Math.max(0, Math.min(canvas.height, predictedPos.y));
+
+                bot.angle = Math.atan2(predictedPos.y - bot.pos.y, predictedPos.x - bot.pos.x);
+
+                if (player.velocity.mag() > 0.5) predictText = `Đón đầu (${Math.round(predictedPos.x)}, ${Math.round(predictedPos.y)})`;
+                else predictText = "Mục tiêu đứng im";
+            }
+
+            if (state === "RETREAT") {
+                decisionText = "Nguy hiểm! Rút lui.";
+                moveDir = bot.pos.sub(player.pos).normalize();
+                if (!canSee) bot.angle = Math.atan2(moveDir.y, moveDir.x);
+
+            } else if (state === "LOOT") {
+                if (targetLoot) {
+                    let itemTypeVN = targetLoot.type === 'medkit' ? "MÁU" : "ĐẠN";
+                    if (bot.ammo === 0 && targetLoot.type === 'ammo') decisionText = "HẾT ĐẠN! TÌM ĐẠN GẤP!";
+                    else if (bot.hp < 40 && targetLoot.type === 'medkit') decisionText = "NGUY KỊCH! TÌM MÁU!";
+                    else decisionText = "Đang tìm: " + itemTypeVN;
+
+                    moveDir = targetLoot.pos.sub(bot.pos).normalize();
+                    if (!canSee) bot.angle = Math.atan2(moveDir.y, moveDir.x);
+                } else {
+                    state = "CHASE"; moveDir = player.pos.sub(bot.pos).normalize();
+                }
+
+            } else if (state === "ATTACK") {
+                bot.patrolTimer = 0;
+                if (dist < 200) {
+                    decisionText = "Quá gần! Lùi lại."; moveDir = bot.pos.sub(player.pos).normalize();
+                } else if (dist > 400) {
+                    decisionText = "Tiếp cận."; moveDir = player.pos.sub(bot.pos).normalize();
+                } else {
+                    decisionText = "Strafe & Bắn.";
+                    moveDir = new Vector(-distVec.y, distVec.x).normalize();
+                    if (Math.random() < 0.05) moveDir = moveDir.mult(-1);
+                }
+                if (bot.shootTimer <= 0 && bot.ammo > 0) {
+                    shoot(bot); bot.ammo--; bot.shootTimer = FIRERATE + Math.random() * 5;
+                }
+
+            } else if (state === "CHASE") {
+                // HÀNH VI TÌM KIẾM THEO TRÍ NHỚ (INVESTIGATE)
+                if (bot.memoryPos && bot.memoryTimer > 0 && !canSee) {
+                    decisionText = "Đang điều tra vị trí cuối cùng (LKP)...";
+                    moveDir = bot.memoryPos.sub(bot.pos).normalize();
+                    bot.angle = Math.atan2(moveDir.y, moveDir.x);
+
+                    // Nếu đã tới vị trí LKP thì xóa trí nhớ để đi tuần tra bình thường
+                    if (bot.pos.sub(bot.memoryPos).mag() < 30) bot.memoryTimer = 0;
+                } else {
+                    // Đi tuần tra bình thường
+                    bot.patrolTimer++;
+                    let forceNewPoint = (bot.stuckTimer > 40);
+                    if (!bot.patrolPoint || bot.pos.sub(bot.patrolPoint).mag() < 20 || bot.patrolTimer > 300 || forceNewPoint) {
+                        if (forceNewPoint) decisionText = "Tìm đường mới..."; else decisionText = "Đang tuần tra ngẫu nhiên...";
+                        let newPoint, attempts = 0;
+                        do {
+                            newPoint = new Vector(50 + Math.random() * (canvas.width - 100), 50 + Math.random() * (canvas.height - 100));
+                            attempts++;
+                        } while (newPoint.sub(bot.pos).mag() < 300 && attempts < 10);
+
+                        bot.patrolPoint = newPoint; bot.patrolTimer = 0; if (forceNewPoint) bot.stuckTimer = 0;
+                    } else {
+                        decisionText = "Di chuyển đến điểm tuần tra...";
+                    }
+                    moveDir = bot.patrolPoint.sub(bot.pos).normalize();
+                    if (!canSee) bot.angle = Math.atan2(moveDir.y, moveDir.x);
+                }
+            }
+
+            // --- HÀNH VI ĐIỀU HƯỚNG NÉ ĐẠN ---
+            bot.isEvadingBullet = false;
+
+            if (bot.isBoss) {
+                // NẾU LÀ BOSS -> SỬ DỤNG PPO ĐỂ NÉ
+                processPPO(bot);
+                if (bot.isEvadingBullet) {
+                    moveDir = moveDir.add(bot.ppoEvasionVector).normalize();
+                    evadeText = "PPO: Tránh né bằng Actor-Critic";
+                }
+            } else {
+                // NẾU LÀ BOT THƯỜNG -> SỬ DỤNG EVASION STEERING CỨNG (CŨ)
+                let evadeVector = new Vector(0, 0);
+                for (let b of bullets) {
+                    if (b.owner === 'player') {
+                        let toBot = bot.pos.sub(b.pos);
+                        let distToBullet = toBot.mag();
+
+                        // Cảm biến cảnh báo đạn ở gần (Bán kính 120px)
+                        if (distToBullet < 120) {
+                            let dotProduct = toBot.normalize().x * b.vel.normalize().x + toBot.normalize().y * b.vel.normalize().y;
+                            if (dotProduct > 0.8) {
+                                let perp = new Vector(-b.vel.y, b.vel.x).normalize();
+                                evadeVector = perp.mult(300 / (distToBullet + 1));
+                                bot.isEvadingBullet = true;
+                                evadeText = "Cảnh báo đạn! Đang lách ngang";
+                            }
+                        }
+                    }
+                }
+                if (bot.isEvadingBullet) moveDir = moveDir.add(evadeVector).normalize();
+            }
+
+            // --- HÀNH VI BẦY ĐÀN (FLOCKING ALGORITHM) ---
+            if (ENEMY_COUNT > 1 && !bot.isBoss && (state === "CHASE" || state === "ATTACK") && bot.stuckTimer < 5) {
+                let separation = new Vector(0, 0); let cohesion = new Vector(0, 0); let neighborCount = 0;
+                for (let other of enemies) {
+                    if (other === bot || other.dead) continue;
+                    let d = bot.pos.sub(other.pos).mag();
+                    if (d < 150) {
+                        flockNeighbors.push(new Vector(other.pos.x, other.pos.y));
+                        cohesion = cohesion.add(other.pos);
+                        let pushVector = bot.pos.sub(other.pos);
+                        separation = separation.add(pushVector.normalize().mult(100 / (d + 1)));
+                        neighborCount++;
+                    }
+                }
+                if (neighborCount > 0) {
+                    cohesion = cohesion.mult(1 / neighborCount).sub(bot.pos).normalize(); separation = separation.normalize();
+                    moveDir = moveDir.add(separation.mult(1.5)).add(cohesion.mult(0.3)).normalize();
+                    flockText = `Tạo đội hình (${neighborCount} đồng minh)`;
+                }
+            } else if (ENEMY_COUNT === 1) flockText = "Không áp dụng (Solo)";
+            else if (bot.stuckTimer >= 5) flockText = "Tạm ngưng (Đang kẹt)";
+
+            // 4. Obstacle Avoidance (Tránh vật cản)
+            let originalDir = new Vector(moveDir.x, moveDir.y);
+            moveDir = avoidObstacles(bot, bot.pos, moveDir, bot.radius);
+
+            if (originalDir.x !== moveDir.x || originalDir.y !== moveDir.y) obstacleText = "⚠️ Đang né vật cản!";
+            else obstacleText = "Đường thoáng";
+
+            // MƯỢT CHUYỂN ĐỘNG (LERP)
+            bot.currentMoveDir.x += (moveDir.x - bot.currentMoveDir.x) * 0.15;
+            bot.currentMoveDir.y += (moveDir.y - bot.currentMoveDir.y) * 0.15;
+
+            let appliedDir = bot.currentMoveDir.normalize();
+
+            // 5. Apply Movement
+            if (appliedDir.mag() > 0) {
+                let vel = appliedDir.mult(AI_SPEED);
+                let oldPos = new Vector(bot.pos.x, bot.pos.y);
+
+                let nextX = bot.pos.x + vel.x; let colX = false;
+                if (nextX < 0 || nextX > canvas.width) colX = true;
+                for (let obs of obstacles) if (checkCollision({ x: nextX, y: bot.pos.y, r: bot.radius }, obs)) colX = true;
+                if (!colX) bot.pos.x = nextX;
+
+                let nextY = bot.pos.y + vel.y; let colY = false;
+                if (nextY < 0 || nextY > canvas.height) colY = true;
+                for (let obs of obstacles) if (checkCollision({ x: bot.pos.x, y: nextY, r: bot.radius }, obs)) colY = true;
+                if (!colY) bot.pos.y = nextY;
+
+                if (bot.pos.sub(oldPos).mag() < 0.5) bot.stuckTimer++; else bot.stuckTimer = 0;
+                bot.velocity = new Vector(bot.pos.x - oldPos.x, bot.pos.y - oldPos.y);
+            }
+
+            // Reset cờ nhận sát thương cuối frame
+            if (bot.isBoss) bot.tookDamageThisFrame = false;
+
+            // 6. Store Data
+            bot.analystData = {
+                scores: { retreat: scoreRetreat, attack: scoreAttack, chase: scoreChase, loot: scoreLoot },
+                decision: decisionText, obstacleText: obstacleText, canSee: canSee, dist: dist,
+                predictText: predictText, flockText: flockText, memoryText: memoryText, evadeText: evadeText,
+                predictedPos: predictedPos, flockNeighbors: flockNeighbors,
+                // Giữ lại data PPO
+                ppoState: bot.isBoss ? bot.analystData.ppoState : null,
+                ppoAction: bot.isBoss ? bot.analystData.ppoAction : null,
+                ppoReward: bot.isBoss ? bot.analystData.ppoReward : null,
+                ppoValue: bot.isBoss ? bot.analystData.ppoValue : null
+            };
+        }
+
+        // --- UPDATE ANALYST UI (Targeting closest bot) ---
+        function updateAnalystUI() {
+            let closestBot = null; let minDist = 99999; let livingCount = 0;
+            for (let bot of enemies) {
+                if (bot.dead) continue; livingCount++;
+                let d = bot.pos.sub(player.pos).mag();
+                if (d < minDist) { minDist = d; closestBot = bot; }
+            }
+            elEnemyCount.innerText = livingCount;
+            if (!closestBot) return;
+
+            const data = closestBot.analystData; const scores = data.scores;
+            let total = Math.max(1, scores.retreat + scores.attack + scores.chase + scores.loot);
+            let pR = Math.round((scores.retreat / total) * 100); let pA = Math.round((scores.attack / total) * 100);
+            let pL = Math.round((scores.loot / total) * 100); let pC = 100 - pR - pA - pL; if (pC < 0) pC = 0;
+
+            document.querySelectorAll('.transition-row').forEach(row => row.classList.remove('active'));
+            document.querySelectorAll('.matrix-table td').forEach(td => { if (td.id) { td.innerText = "0%"; td.className = td.className.replace('high-prob', ''); } });
+
+            let state = closestBot.lastState;
+            let currentRowId = 'trans-row-' + state.toLowerCase();
+            let currentRow = document.getElementById(currentRowId);
+            if (currentRow) {
+                currentRow.classList.add('active'); let cells = currentRow.getElementsByTagName('td');
+                cells[1].innerText = pR + "%"; cells[2].innerText = pA + "%"; cells[3].innerText = pC + "%"; cells[4].innerText = pL + "%";
+                if (pR > 50) cells[1].classList.add('high-prob'); if (pA > 50) cells[2].classList.add('high-prob');
+                if (pC > 50) cells[3].classList.add('high-prob'); if (pL > 50) cells[4].classList.add('high-prob');
+            }
+
+            elScoreRetreat.innerText = Math.round(scores.retreat); elScoreAttack.innerText = Math.round(scores.attack);
+            elScoreChase.innerText = Math.round(scores.chase); elScoreLoot.innerText = Math.round(scores.loot);
+
+            if (elBarRetreat) elBarRetreat.style.width = pR + "%"; if (elBarAttack) elBarAttack.style.width = pA + "%";
+            if (elBarChase) elBarChase.style.width = pC + "%"; if (elBarLoot) elBarLoot.style.width = pL + "%";
+
+            elAiDist.innerText = Math.round(data.dist) + "m";
+            elAiLos.innerText = data.canSee ? "CÓ" : "KHÔNG"; elAiLos.style.color = data.canSee ? "#2ecc71" : "#e74c3c";
+            elAiHp.innerText = Math.round(closestBot.hp) + "%"; elAiAmmo.innerText = closestBot.ammo;
+
+            let stateColor = "#3498db";
+            if (state === "ATTACK") stateColor = "#e67e22"; if (state === "RETREAT") stateColor = "#e74c3c"; if (state === "LOOT") stateColor = "#9b59b6";
+
+            elAiStateDisp.innerText = state; elAiStateDisp.style.color = stateColor; elAiDecision.innerText = data.decision;
+
+            // CẬP NHẬT UI HỌC THUẬT
+            elAiPredict.innerText = data.predictText;
+            elAiFlock.innerText = data.flockText; if (data.flockText.includes("Đội hình")) elAiFlock.style.color = "#3498db"; else elAiFlock.style.color = "#888";
+            elAiMemory.innerText = data.memoryText; if (data.memoryText.includes("Nhớ")) elAiMemory.style.color = "#9b59b6"; else elAiMemory.style.color = "#888";
+
+            if (closestBot.isBoss) {
+                elEvadeContainer.style.display = 'none';
+                elPpoPanel.style.display = 'block';
+                elPpoState.innerText = data.ppoState;
+                elPpoAction.innerText = data.ppoAction;
+                elPpoReward.innerText = data.ppoReward;
+                elPpoReward.style.color = parseFloat(data.ppoReward) < 0 ? "#e74c3c" : "#2ecc71";
+                elPpoValue.innerText = data.ppoValue;
+            } else {
+                elEvadeContainer.style.display = 'block';
+                elPpoPanel.style.display = 'none';
+                elAiEvade.innerText = data.evadeText; if (data.evadeText.includes("Cảnh báo")) elAiEvade.style.color = "#e74c3c"; else elAiEvade.style.color = "#2ecc71";
+            }
+
+            if (data.obstacleText.includes("né")) elAiObstacleLog.style.color = "#f39c12"; else elAiObstacleLog.style.color = "#888";
+            elAiObstacleLog.innerText = data.obstacleText;
+
+            stateHistory.push(state); if (stateHistory.length > MAX_HISTORY) stateHistory.shift(); drawStateChart();
+            return closestBot;
+        }
+
+        // --- GAME LOOP ---
+        function update() {
+            if (!gameRunning) return;
+
+            lootSpawnTimer++;
+            if (lootSpawnTimer > 180) {
+                let success = spawnLoot(Math.random() > 0.5 ? 'medkit' : 'ammo'); lootSpawnTimer = 0;
+                if (success) { elLootMsg.style.opacity = '1'; setTimeout(() => elLootMsg.style.opacity = '0', 1000); }
+            }
+
+            let oldPlayerPos = new Vector(player.pos.x, player.pos.y);
+            let move = new Vector(0, 0);
+            if (keys['w']) move.y -= 1; if (keys['s']) move.y += 1; if (keys['a']) move.x -= 1; if (keys['d']) move.x += 1;
+
+            if (move.mag() > 0) {
+                let vel = move.normalize().mult(PLAYER_SPEED);
+                let nextX = player.pos.x + vel.x; let colX = false;
+                if (nextX < 0 || nextX > canvas.width) colX = true;
+                for (let obs of obstacles) if (checkCollision({ x: nextX, y: player.pos.y, r: player.radius }, obs)) colX = true;
+                if (!colX) player.pos.x = nextX;
+
+                let nextY = player.pos.y + vel.y; let colY = false;
+                if (nextY < 0 || nextY > canvas.height) colY = true;
+                for (let obs of obstacles) if (checkCollision({ x: player.pos.x, y: nextY, r: player.radius }, obs)) colY = true;
+                if (!colY) player.pos.y = nextY;
+            }
+
+            player.velocity = new Vector(player.pos.x - oldPlayerPos.x, player.pos.y - oldPlayerPos.y);
+            player.angle = Math.atan2(mouse.y - player.pos.y, mouse.x - player.pos.x);
+
+            if (player.shootTimer > 0) player.shootTimer--;
+
+            for (let i = 0; i < loots.length; i++) {
+                let l = loots[i]; if (!l.active) continue;
+                if (checkCircleCollision(player, l)) {
+                    if (l.type === 'medkit' && player.hp < 100) { player.hp = Math.min(100, player.hp + 50); l.active = false; }
+                    else if (l.type === 'ammo') { player.ammo = Math.min(MAX_AMMO, player.ammo + 15); l.active = false; }
+                }
+                for (let bot of enemies) {
+                    if (!bot.dead && checkCircleCollision(bot, l)) {
+                        if (l.type === 'medkit' && bot.hp < bot.maxHp) { bot.hp = Math.min(bot.maxHp, bot.hp + 50); l.active = false; }
+                        else if (l.type === 'ammo') { bot.ammo = Math.min(MAX_AMMO, bot.ammo + 15); l.active = false; }
+                    }
+                }
+            }
+
+            let livingEnemies = 0;
+            enemies.forEach(bot => {
+                if (!bot.dead) { if (bot.shootTimer > 0) bot.shootTimer--; processBotLogic(bot); livingEnemies++; }
+            });
+
+            if (livingEnemies === 0) endGame("BẠN THẮNG!");
+
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i]; b.update();
+                for (let obs of obstacles) {
+                    if (b.pos.x > obs.x && b.pos.x < obs.x + obs.w && b.pos.y > obs.y && b.pos.y < obs.y + obs.h) b.active = false;
+                }
+                if (b.owner === 'ai' && !player.dead) {
+                    let d = b.pos.sub(player.pos).mag();
+                    if (d < player.radius + b.radius) { player.takeDamage(10); b.active = false; }
+                }
+                if (b.owner === 'player') {
+                    for (let bot of enemies) {
+                        if (!bot.dead) {
+                            let d = b.pos.sub(bot.pos).mag();
+                            if (d < bot.radius + b.radius) { bot.takeDamage(15); b.active = false; }
+                        }
+                    }
+                }
+                if (!b.active) bullets.splice(i, 1);
+            }
+
+            if (player.dead) endGame("GAME OVER!");
+            elPlayerHp.innerText = Math.max(0, player.hp); elPlayerAmmo.innerText = player.ammo;
+        }
+
+        function draw() {
+            ctx.fillStyle = '#2b2b2b'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
+            for (let y = 0; y < canvas.height; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
+
+            ctx.fillStyle = 'rgba(52, 152, 219, 0.05)'; ctx.beginPath(); ctx.arc(100, 300, 100, 0, Math.PI * 2); ctx.fill();
+
+            loots.forEach(l => l.draw()); obstacles.forEach(obs => obs.draw());
+            if (player) player.draw();
+
+            let focusedBot = null; if (gameRunning) focusedBot = updateAnalystUI();
+            enemies.forEach(bot => bot.draw(bot === focusedBot));
+            bullets.forEach(b => b.draw());
+
+            if (focusedBot && !focusedBot.dead) {
+
+                // VẼ TRỰC QUAN TRÍ NHỚ (LAST KNOWN POSITION)
+                if (focusedBot.memoryPos && focusedBot.memoryTimer > 0 && !focusedBot.analystData.canSee) {
+                    ctx.strokeStyle = 'rgba(155, 89, 182, 0.6)';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([3, 3]);
+                    ctx.beginPath();
+                    ctx.arc(focusedBot.memoryPos.x, focusedBot.memoryPos.y, 20, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.font = '16px Arial';
+                    ctx.fillStyle = 'rgba(155, 89, 182, 0.8)';
+                    ctx.fillText("?", focusedBot.memoryPos.x - 5, focusedBot.memoryPos.y + 5);
+                    ctx.setLineDash([]);
+                }
+
+                if (player && !player.dead) {
+                    ctx.beginPath(); ctx.moveTo(focusedBot.pos.x, focusedBot.pos.y);
+                    let canSee = hasLineOfSight(focusedBot, player);
+                    if (canSee) { ctx.lineTo(player.pos.x, player.pos.y); ctx.strokeStyle = 'rgba(231, 76, 60, 0.2)'; }
+                    else { ctx.lineTo(focusedBot.pos.x + Math.cos(focusedBot.angle) * 50, focusedBot.pos.y + Math.sin(focusedBot.angle) * 50); ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'; }
+                    ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+
+                    if (focusedBot.analystData.predictedPos && canSee && player.velocity.mag() > 0.5) {
+                        let p = focusedBot.analystData.predictedPos;
+                        ctx.strokeStyle = '#f39c12'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+                        ctx.moveTo(p.x - 12, p.y); ctx.lineTo(p.x + 12, p.y); ctx.moveTo(p.x, p.y - 12); ctx.lineTo(p.x, p.y + 12); ctx.stroke();
+                        ctx.beginPath(); ctx.moveTo(focusedBot.pos.x, focusedBot.pos.y); ctx.lineTo(p.x, p.y);
+                        ctx.setLineDash([2, 4]); ctx.strokeStyle = 'rgba(243, 156, 18, 0.6)'; ctx.stroke(); ctx.setLineDash([]);
+                    }
+                }
+
+                if (focusedBot.analystData.flockNeighbors && focusedBot.analystData.flockNeighbors.length > 0) {
+                    ctx.strokeStyle = 'rgba(52, 152, 219, 0.5)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+                    for (let n of focusedBot.analystData.flockNeighbors) {
+                        ctx.beginPath(); ctx.moveTo(focusedBot.pos.x, focusedBot.pos.y); ctx.lineTo(n.x, n.y); ctx.stroke();
+                    }
+                    ctx.setLineDash([]);
+                }
+
+                if (focusedBot.patrolPoint && focusedBot.lastState === "CHASE" && !focusedBot.memoryPos) {
+                    ctx.fillStyle = 'rgba(52, 152, 219, 0.3)'; ctx.beginPath(); ctx.arc(focusedBot.patrolPoint.x, focusedBot.patrolPoint.y, 5, 0, Math.PI * 2); ctx.fill();
+                }
+            }
+            drawMinimap();
+        }
+
+        function drawMinimap() {
+            if (!gameRunning) return;
+            const mapW = 160; const mapH = 120; const mapX = canvas.width - mapW - 20; const mapY = 20; const scale = mapW / canvas.width;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'; ctx.fillRect(mapX, mapY, mapW, mapH);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; ctx.lineWidth = 1; ctx.strokeRect(mapX, mapY, mapW, mapH);
+            obstacles.forEach(obs => {
+                ctx.fillStyle = obs.type === 'crate' ? 'rgba(141, 110, 99, 0.6)' : 'rgba(56, 142, 60, 0.6)';
+                ctx.fillRect(mapX + obs.x * scale, mapY + obs.y * scale, obs.w * scale, obs.h * scale);
+            });
+            loots.forEach(l => {
+                if (!l.active) return;
+                ctx.fillStyle = l.type === 'medkit' ? '#e74c3c' : '#27ae60'; ctx.beginPath(); ctx.arc(mapX + l.pos.x * scale, mapY + l.pos.y * scale, 2, 0, Math.PI * 2); ctx.fill();
+            });
+            enemies.forEach(bot => {
+                if (bot.dead) return;
+                ctx.fillStyle = '#e74c3c'; ctx.beginPath(); ctx.arc(mapX + bot.pos.x * scale, mapY + bot.pos.y * scale, 3, 0, Math.PI * 2); ctx.fill();
+            });
+            if (player && !player.dead) {
+                ctx.fillStyle = '#3498db'; ctx.beginPath(); ctx.arc(mapX + player.pos.x * scale, mapY + player.pos.y * scale, 3.5, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; ctx.lineWidth = 1.5; ctx.beginPath();
+                ctx.moveTo(mapX + player.pos.x * scale, mapY + player.pos.y * scale);
+                ctx.lineTo(mapX + player.pos.x * scale + Math.cos(player.angle) * 8, mapY + player.pos.y * scale + Math.sin(player.angle) * 8); ctx.stroke();
+            }
+        }
+
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
+        function endGame(msg) { gameRunning = false; gameOverScreen.style.display = 'flex'; winnerText.innerText = msg; }
+        function showMenu() { gameOverScreen.style.display = 'none'; startMenuScreen.style.display = 'flex'; gameRunning = false; }
+
+        // Khởi động
+        showMenu();
+        loop();
+
+    </script>
+
+</body>
+</html>
